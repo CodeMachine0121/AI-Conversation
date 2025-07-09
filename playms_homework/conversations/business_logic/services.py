@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Any
 
-from ..data_access.repositories import ConversationRepository
-from ..data_access.ai_proxy import AIProxy
+from ..repositories.repositories import ConversationRepository
+from ..proxies.ai_proxy import AIProxy
 from ..models import Conversation, Message
 
 
