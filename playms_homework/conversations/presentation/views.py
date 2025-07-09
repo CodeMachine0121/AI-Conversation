@@ -28,11 +28,12 @@ class ConversationViewSet(viewsets.ModelViewSet):
         """
         return self.service.create_conversation(self.request.user.id)
 
+
+    """
+        Close a conversation.
+    """
     @action(detail=True, methods=['post'])
     def close(self, request, pk=None):
-        """
-        Close a conversation.
-        """
         conversation = self.service.close_conversation(pk)
         if not conversation:
             return Response(
@@ -44,11 +45,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK
         )
 
+    """
+        Reopen a closed conversation.
+    """
     @action(detail=True, methods=['post'])
     def reopen(self, request, pk=None):
-        """
-        Reopen a closed conversation.
-        """
         conversation = self.service.reopen_conversation(pk)
         if not conversation:
             return Response(
@@ -60,11 +61,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK
         )
 
+    """
+        Get all messages for a conversation.
+    """
     @action(detail=True, methods=['get'])
     def messages(self, request, pk=None):
-        """
-        Get all messages for a conversation.
-        """
         messages = self.service.get_conversation_messages(pk)
         return Response(
             MessageSerializer(messages, many=True).data,
