@@ -19,7 +19,7 @@ urlpatterns = [
     path("users/", include("playms_homework.users.urls", namespace="users")),
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
-    # ...
+    path("", include("playms_homework.conversations.urls")),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
 ]
