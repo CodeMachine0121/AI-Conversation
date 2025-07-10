@@ -4,7 +4,7 @@ from playms_homework.conversations.repositories.chat_setting_repository import C
 class ChatSettingService:
     def __init__(self):
         self.repository = ChatSettingRepository()
-    def create_chat_setting(self, settings_data: ChatSetting) -> dict:
+    def create_chat_setting(self, user_id: str, settings_data: ChatSetting) -> dict:
         """
         Create a new chat setting for a user.
 
@@ -15,4 +15,4 @@ class ChatSettingService:
         Returns:
             The newly created chat setting.
         """
-        return self.repository.create_chat_setting( settings_data)
+        return self.repository.create_chat_setting(user_id, settings_data)

@@ -4,7 +4,7 @@ from playms_homework.conversations.models.chat_setting import ChatSetting
 class ChatSettingRepository:
 
     @staticmethod
-    def create_chat_setting(settings_data: ChatSetting) -> ChatSetting:
+    def create_chat_setting(user_id: str, settings_data: ChatSetting) -> ChatSetting:
             """
             Create a new conversation for a user.
 
@@ -14,4 +14,8 @@ class ChatSettingRepository:
             Returns:
                 The newly created conversation.
             """
-            return ChatSetting.objects.create(user_id=settings_data.user_id)
+            chat_setting = ChatSetting.objects.create(
+                user_id=user_id,
+                **settings_data
+            )
+            return chat_setting

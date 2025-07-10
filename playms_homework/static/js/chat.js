@@ -171,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const messageInput = document.getElementById('message-input');
   const sendButton = messageForm.querySelector('button');
   const newConversationBtn = document.getElementById('new-conversation-btn');
+  const createChatSettingForm = document.getElementById('setting-form');
 
   const activeConversation = { id: null };
   const csrftoken = getCookie('csrftoken');
@@ -178,6 +179,38 @@ document.addEventListener('DOMContentLoaded', () => {
   messageForm.addEventListener('submit', (e) => handleMessageSubmit(e, messageInput, sendButton, activeConversation.id, csrftoken, chatMessages));
   conversationList.addEventListener('click', (e) => handleConversationClick(e, chatMessages, messageInput, sendButton, activeConversation));
   newConversationBtn.addEventListener('click', () => handleNewConversation(csrftoken, conversationList, chatMessages, messageInput, sendButton, activeConversation));
+
+  createChatSettingForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    console.log("submit settings form");
+    try {
+      const response = await fetch('/api/chat-setting/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({
+          'reply_style': "test-reply-style",
+          'tone': "test-tone",
+          'model': "gpt-3.5-turbo",
+          'pre_constructed_prompt': "test pre-constructed prompt",
+          'created_at': "2023-10-01T00:00:00Z",
+          'updated_at': "2023-10-01T00:00:00Z"
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create chat settings');
+      }
+      const newConversation = await response.json();
+      await loadConversations(conversationList, chatMessages); // Refresh list
+      activeConversation.id = await loadMessages(newConversation.id, chatMessages, messageInput, sendButton); // Load the new empty conversation
+    } catch (error) {
+      alert('Could not create a new conversation.');
+    }
+
+  })
 
   // Initial load
   loadConversations(conversationList, chatMessages);

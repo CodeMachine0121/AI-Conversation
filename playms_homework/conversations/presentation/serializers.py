@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from ..models import Conversation, Message
+from ..models.chat_setting import ChatSetting
 
 
 # 定義　response model
@@ -23,3 +24,8 @@ class ConversationSerializer(serializers.ModelSerializer):
 class UserMessageSerializer(serializers.Serializer):
     # 直接與 model　綁定
     message = serializers.CharField(required=True)
+
+class ChatSettingSerializer(serializers.Serializer):
+    class Mata:
+        model = ChatSetting
+        fields = ['reply_style', 'tone', 'model', 'pre_constructed_prompt','created_at', 'updated_at']
