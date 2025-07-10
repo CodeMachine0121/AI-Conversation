@@ -1,6 +1,6 @@
 from requests.models import Response
 
-from playms_homework.conversations.business_logic.setting_services import SettingService
+from playms_homework.conversations.business_logic.chat_setting_services import ChatSettingService
 from playms_homework.conversations.presentation.serializers import ConversationSerializer
 from rest_framework import viewsets, status
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
@@ -15,7 +15,7 @@ class SettingViewSet(viewsets.ModelViewSet):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.service = SettingService()
+        self.service = ChatSettingService()
     """
     ViewSet for handling settings-related operations.
     """
