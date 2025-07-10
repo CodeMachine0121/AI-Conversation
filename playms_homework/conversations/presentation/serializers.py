@@ -3,11 +3,8 @@ from rest_framework import serializers
 from ..models import Conversation, Message
 
 
+# 定義　response model
 class MessageSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the Message model.
-    """
-
     class Meta:
         model = Message
         fields = ['id', 'sender', 'content', 'timestamp']
@@ -15,9 +12,6 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class ConversationSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the Conversation model.
-    """
     messages = MessageSerializer(many=True, read_only=True)
 
     class Meta:
@@ -27,7 +21,5 @@ class ConversationSerializer(serializers.ModelSerializer):
 
 
 class UserMessageSerializer(serializers.Serializer):
-    """
-    Serializer for user messages.
-    """
+    # 直接與 model　綁定
     message = serializers.CharField(required=True)
