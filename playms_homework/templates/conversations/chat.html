@@ -166,8 +166,181 @@
 {% endblock %}
 
 {% block inline_javascript %}
-{% block inline_javascript %}
-{{ block.super }}
-<script src="{% static 'js/chat.js' %}"></script>
-{% endblock inline_javascript %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const conversationList = document.getElementById('conversation-list');
+  const chatMessages = document.getElementById('chat-messages');
+  const messageForm = document.getElementById('message-form');
+  const messageInput = document.getElementById('message-input');
+  const sendButton = messageForm.querySelector('button');
+  const newConversationBtn = document.getElementById('new-conversation-btn');
+
+  let activeConversationId = null;
+
+  // Utility to get CSRF token
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  // Fetch all conversations for the user
+  async function loadConversations() {
+    try {
+      const response = await fetch('/api/conversations/');
+      if (!response.ok) throw new Error('Failed to fetch conversations');
+      const conversations = await response.json();
+      
+      // Clear existing list but keep the header and button
+      const header = conversationList.querySelector('.d-flex');
+      conversationList.innerHTML = '';
+      conversationList.appendChild(header);
+
+      conversations.forEach(conv => {
+        const convElement = document.createElement('a');
+        convElement.href = '#';
+        convElement.className = 'list-group-item list-group-item-action';
+        convElement.dataset.conversationId = conv.id;
+        convElement.textContent = `Conversation ${conv.id} (${new Date(conv.created_at).toLocaleString()})`;
+        conversationList.appendChild(convElement);
+      });
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+      chatMessages.innerHTML = '<p class="text-danger text-center">Could not load conversations.</p>';
+    }
+  }
+
+  // Fetch messages for a given conversation
+  async function loadMessages(conversationId) {
+    activeConversationId = conversationId;
+    chatMessages.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    
+    // Highlight active conversation
+    document.querySelectorAll('#conversation-list .list-group-item-action').forEach(el => {
+        el.classList.remove('active');
+    });
+    document.querySelector(`[data-conversation-id="${conversationId}"]`).classList.add('active');
+
+    try {
+      const response = await fetch(`/api/conversations/${conversationId}/messages/`);
+      if (!response.ok) throw new Error('Failed to fetch messages');
+      const messages = await response.json();
+      
+      chatMessages.innerHTML = '';
+      if (messages.length === 0) {
+          chatMessages.innerHTML = '<p class="text-center text-muted">No messages yet. Send one to start!</p>';
+      } else {
+        messages.forEach(addMessageToChat);
+      }
+      
+      messageInput.disabled = false;
+      sendButton.disabled = false;
+      messageInput.focus();
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      chatMessages.innerHTML = '<p class="text-danger text-center">Could not load messages.</p>';
+    }
+  }
+
+  // Add a single message to the chat window
+  function addMessageToChat(message) {
+    if (chatMessages.querySelector('.text-center')) {
+        chatMessages.innerHTML = ''; // Clear placeholder text
+    }
+    const messageWrapper = document.createElement('div');
+    messageWrapper.className = `message ${message.sender}-message`;
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'content';
+    messageDiv.textContent = message.content;
+    
+    messageWrapper.appendChild(messageDiv);
+    chatMessages.appendChild(messageWrapper);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  // Handle new message submission
+  messageForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const messageText = messageInput.value.trim();
+    if (!messageText || !activeConversationId) return;
+
+    messageInput.value = '';
+    messageInput.disabled = true;
+    sendButton.disabled = true;
+
+    // Display user message immediately
+    addMessageToChat({ sender: 'user', content: messageText });
+
+    try {
+      const response = await fetch(`/api/conversations/${activeConversationId}/send_message/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify({ message: messageText }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to send message');
+      }
+      
+      const aiMessage = await response.json();
+      addMessageToChat(aiMessage);
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      addMessageToChat({ sender: 'ai', content: `Error: ${error.message}` });
+    } finally {
+      messageInput.disabled = false;
+      sendButton.disabled = false;
+      messageInput.focus();
+    }
+  });
+
+  // Handle clicking on a conversation
+  conversationList.addEventListener('click', (e) => {
+    if (e.target && e.target.matches('.list-group-item-action')) {
+      e.preventDefault();
+      const conversationId = e.target.dataset.conversationId;
+      loadMessages(conversationId);
+    }
+  });
+
+  // Handle creating a new conversation
+  newConversationBtn.addEventListener('click', async () => {
+    try {
+        const response = await fetch('/api/conversations/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+        });
+        if (!response.ok) throw new Error('Failed to create conversation');
+        const newConversation = await response.json();
+        await loadConversations(); // Refresh list
+        loadMessages(newConversation.id); // Load the new empty conversation
+    } catch (error) {
+        console.error('Error creating new conversation:', error);
+        alert('Could not create a new conversation.');
+    }
+  });
+
+  // Initial load
+  loadConversations();
+});
+</script>
 {% endblock %}
