@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Chat{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<style>
+  body, html {
+    height: 100%;
+    overflow: hidden;
+  }
+  .main-container {
+    display: flex;
+    height: calc(100vh - 56px); /* 56px is the height of the navbar */
+  }
+  #conversation-list {
+    flex: 0 0 25%;
+    border-right: 1px solid #dee2e6;
+    padding: 1rem;
+    overflow-y: auto;
+  }
+  #chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+  }
+  #chat-messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+  }
+  .message {
+    margin-bottom: 1rem;
+  }
+  .message .sender {
+    font-weight: bold;
+  }
+  .message .content {
+    padding: 0.5rem 1rem;
+    border-radius: 1rem;
+    display: inline-block;
+    max-width: 80%;
+  }
+  .user-message .content {
+    background-color: #0d6efd;
+    color: white;
+  }
+  .ai-message .content {
+    background-color: #e9ecef;
+    color: #212529;
+  }
+  .user-message {
+    text-align: right;
+  }
+</style>
+{% endblock %}
+
+{% block bodyclass %}body-no-padding{% endblock %}
+
+{% block body %}
+<div class="mb-1">
+  <nav class="navbar navbar-expand-md navbar-light bg-light">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="{% url 'home' %}">playms_homework</a>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'home' %}">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'about' %}">About</a>
+          </li>
+           <li class="nav-item active">
+              <a class="nav-link" href="{% url 'chat' %}">Chat <span class="visually-hidden">(current)</span></a>
+            </li>
+          {% if request.user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'users:detail' request.user.username %}">My Profile</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'account_logout' %}">Sign Out</a>
+            </li>
+          {% else %}
+            <li class="nav-item">
+              <a id="sign-up-link" class="nav-link" href="{% url 'account_signup' %}">Sign Up</a>
+            </li>
+            <li class="nav-item">
+              <a id="log-in-link" class="nav-link" href="{% url 'account_login' %}">Sign In</a>
+            </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </nav>
+</div>
+
+<div class="container-fluid main-container">
+  <!-- Conversation List Sidebar -->
+  <div id="conversation-list" class="list-group">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h4 class="mb-0">Conversations</h4>
+        <button id="new-conversation-btn" class="btn btn-primary btn-sm">+</button>
+    </div>
+    <!-- Conversations will be loaded here by JavaScript -->
+  </div>
+
+  <!-- Main Chat Area -->
+  <div id="chat-container">
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat-panel" type="button" role="tab" aria-controls="chat-panel" aria-selected="true">Conversation</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings-panel" type="button" role="tab" aria-controls="settings-panel" aria-selected="false">Settings</button>
+      </li>
+    </ul>
+    <div class="tab-content" id="myTabContent" style="flex-grow: 1; display: flex; flex-direction: column;">
+      <div class="tab-pane fade show active" id="chat-panel" role="tabpanel" aria-labelledby="chat-tab" style="flex-grow: 1; display: flex; flex-direction: column;">
+        <div id="chat-messages">
+          <!-- Messages will be loaded here -->
+          <p class="text-center text-muted">Select a conversation to start chatting or start a new one.</p>
+        </div>
+        <form id="message-form" class="d-flex">
+          <input type="text" id="message-input" class="form-control me-2" placeholder="Type your message..." autocomplete="off" disabled>
+          <button type="submit" class="btn btn-primary" disabled>Send</button>
+        </form>
+      </div>
+      <div class="tab-pane fade" id="settings-panel" role="tabpanel" aria-labelledby="settings-tab">
+        <div class="p-3">
+            <h4>AI Settings</h4>
+            <form id="settings-form">
+                <div class="mb-3">
+                    <label for="ai-style" class="form-label">Reply Style</label>
+                    <input type="text" class="form-control" id="ai-style" value="Formal">
+                </div>
+                <div class="mb-3">
+                    <label for="ai-tone" class="form-label">Tone</label>
+                    <input type="text" class="form-control" id="ai-tone" value="Polite">
+                </div>
+                <div class="mb-3">
+                    <label for="ai-model" class="form-label">Model</label>
+                    <input type="text" class="form-control" id="ai-model" value="gpt-4">
+                </div>
+                 <div class="mb-3">
+                    <label for="api-key" class="form-label">API Key</label>
+                    <input type="password" class="form-control" id="api-key" value="super-secret-key">
+                </div>
+                <div class="mb-3">
+                    <label for="pre-construction" class="form-label">Pre-construction (System Prompt)</label>
+                    <textarea class="form-control" id="pre-construction" rows="3">You are a helpful assistant.</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+            </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block inline_javascript %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const conversationList = document.getElementById('conversation-list');
+  const chatMessages = document.getElementById('chat-messages');
+  const messageForm = document.getElementById('message-form');
+  const messageInput = document.getElementById('message-input');
+  const sendButton = messageForm.querySelector('button');
+  const newConversationBtn = document.getElementById('new-conversation-btn');
+
+  let activeConversationId = null;
+
+  // Utility to get CSRF token
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  // Fetch all conversations for the user
+  async function loadConversations() {
+    try {
+      const response = await fetch('/api/conversations/');
+      if (!response.ok) throw new Error('Failed to fetch conversations');
+      const conversations = await response.json();
+      
+      // Clear existing list but keep the header and button
+      const header = conversationList.querySelector('.d-flex');
+      conversationList.innerHTML = '';
+      conversationList.appendChild(header);
+
+      conversations.forEach(conv => {
+        const convElement = document.createElement('a');
+        convElement.href = '#';
+        convElement.className = 'list-group-item list-group-item-action';
+        convElement.dataset.conversationId = conv.id;
+        convElement.textContent = `Conversation ${conv.id} (${new Date(conv.created_at).toLocaleString()})`;
+        conversationList.appendChild(convElement);
+      });
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+      chatMessages.innerHTML = '<p class="text-danger text-center">Could not load conversations.</p>';
+    }
+  }
+
+  // Fetch messages for a given conversation
+  async function loadMessages(conversationId) {
+    activeConversationId = conversationId;
+    chatMessages.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    
+    // Highlight active conversation
+    document.querySelectorAll('#conversation-list .list-group-item-action').forEach(el => {
+        el.classList.remove('active');
+    });
+    document.querySelector(`[data-conversation-id="${conversationId}"]`).classList.add('active');
+
+    try {
+      const response = await fetch(`/api/conversations/${conversationId}/messages/`);
+      if (!response.ok) throw new Error('Failed to fetch messages');
+      const messages = await response.json();
+      
+      chatMessages.innerHTML = '';
+      if (messages.length === 0) {
+          chatMessages.innerHTML = '<p class="text-center text-muted">No messages yet. Send one to start!</p>';
+      } else {
+        messages.forEach(addMessageToChat);
+      }
+      
+      messageInput.disabled = false;
+      sendButton.disabled = false;
+      messageInput.focus();
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      chatMessages.innerHTML = '<p class="text-danger text-center">Could not load messages.</p>';
+    }
+  }
+
+  // Add a single message to the chat window
+  function addMessageToChat(message) {
+    if (chatMessages.querySelector('.text-center')) {
+        chatMessages.innerHTML = ''; // Clear placeholder text
+    }
+    const messageWrapper = document.createElement('div');
+    messageWrapper.className = `message ${message.sender}-message`;
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'content';
+    messageDiv.textContent = message.content;
+    
+    messageWrapper.appendChild(messageDiv);
+    chatMessages.appendChild(messageWrapper);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  // Handle new message submission
+  messageForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const messageText = messageInput.value.trim();
+    if (!messageText || !activeConversationId) return;
+
+    messageInput.value = '';
+    messageInput.disabled = true;
+    sendButton.disabled = true;
+
+    // Display user message immediately
+    addMessageToChat({ sender: 'user', content: messageText });
+
+    try {
+      const response = await fetch(`/api/conversations/${activeConversationId}/send_message/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify({ message: messageText }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to send message');
+      }
+      
+      const aiMessage = await response.json();
+      addMessageToChat(aiMessage);
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      addMessageToChat({ sender: 'ai', content: `Error: ${error.message}` });
+    } finally {
+      messageInput.disabled = false;
+      sendButton.disabled = false;
+      messageInput.focus();
+    }
+  });
+
+  // Handle clicking on a conversation
+  conversationList.addEventListener('click', (e) => {
+    if (e.target && e.target.matches('.list-group-item-action')) {
+      e.preventDefault();
+      const conversationId = e.target.dataset.conversationId;
+      loadMessages(conversationId);
+    }
+  });
+
+  // Handle creating a new conversation
+  newConversationBtn.addEventListener('click', async () => {
+    try {
+        const response = await fetch('/api/conversations/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken },
+        });
+        if (!response.ok) throw new Error('Failed to create conversation');
+        const newConversation = await response.json();
+        await loadConversations(); // Refresh list
+        loadMessages(newConversation.id); // Load the new empty conversation
+    } catch (error) {
+        console.error('Error creating new conversation:', error);
+        alert('Could not create a new conversation.');
+    }
+  });
+
+  // Initial load
+  loadConversations();
+});
+</script>
+{% endblock %}

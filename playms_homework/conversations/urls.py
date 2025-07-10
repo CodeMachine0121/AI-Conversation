@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from .presentation.views import ConversationViewSet
+from .views import ChatView
 
 # Create a router and register our viewsets with it
 router = DefaultRouter()
@@ -9,5 +10,6 @@ router.register(r'conversations', ConversationViewSet, basename='conversation')
 
 # The API URLs are now determined automatically by the router
 urlpatterns = [
+    path("chat/", ChatView.as_view(), name="chat"),
     path('api/', include(router.urls)),
 ]
