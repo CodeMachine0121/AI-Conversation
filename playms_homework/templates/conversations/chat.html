@@ -127,6 +127,7 @@
           <p class="text-center text-muted">Select a conversation to start chatting or start a new one.</p>
         </div>
         <form id="message-form" class="d-flex">
+          {% csrf_token %}
           <input type="text" id="message-input" class="form-control me-2" placeholder="Type your message..." autocomplete="off" disabled>
           <button type="submit" class="btn btn-primary" disabled>Send</button>
         </form>
@@ -323,7 +324,10 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         const response = await fetch('/api/conversations/', {
             method: 'POST',
-            headers: { 'X-CSRFToken': csrftoken },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
         });
         if (!response.ok) throw new Error('Failed to create conversation');
         const newConversation = await response.json();

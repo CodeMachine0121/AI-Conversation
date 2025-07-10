@@ -1,7 +1,8 @@
 from rest_framework import viewsets, status
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from ..business_logic.services import ConversationService
 from ..models import Conversation
@@ -10,6 +11,7 @@ from .serializers import ConversationSerializer, MessageSerializer, UserMessageS
 
 class ConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ConversationSerializer
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def __init__(self, *args, **kwargs):
