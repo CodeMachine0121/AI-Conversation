@@ -28,4 +28,4 @@ class UserMessageSerializer(serializers.Serializer):
 class ChatSettingSerializer(serializers.Serializer):
     class Mata:
         model = ChatSetting
-        fields = ['reply_style', 'tone', 'model', 'pre_constructed_prompt','created_at', 'updated_at']
+        fields = ['reply_style', 'tone', 'model', 'pre_constructed_prompt','created_at', 'updated_at', 'api_key']

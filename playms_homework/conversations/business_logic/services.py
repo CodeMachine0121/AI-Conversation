@@ -1,5 +1,7 @@
 from typing import List, Optional, Dict, Any
 
+from ..models.chat_setting import ChatSetting
+from ..repositories.chat_setting_repository import ChatSettingRepository
 from ..repositories.repositories import ConversationRepository
 from ..proxies.ai_proxy import AIProxy
 from ..models import Conversation, Message
@@ -105,9 +107,10 @@ class ConversationService:
             return None
 
         # Generate AI response
-
-        ai_proxy = AIProxy(user_id= user_id)
-        ai_response = ai_proxy.generate_response(user_message, context)
+        chat_setting_repository = ChatSettingRepository()
+        ai_response = AIProxy.generate_response(
+            user_message= user_message,
+            user_chat_setting= chat_setting_repository.get_chat_setting(user_id))
 
         # Add AI response to the conversation
         return self.repository.add_message(conversation_id, Message.AI, ai_response)

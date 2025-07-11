@@ -234,8 +234,6 @@ function initializeChatApp(chatMessages, conversationList, messageForm, messageI
               'model': document.getElementById('ai-model').value,
               'pre_constructed_prompt':  document.getElementById('pre-construction').value,
               'api_key': document.getElementById('api-key').value,
-              'created_at': new Date().toISOString(),
-              'updated_at': new Date().toISOString(),
           }),
         });
 
