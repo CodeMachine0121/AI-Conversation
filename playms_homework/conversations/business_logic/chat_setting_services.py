@@ -14,13 +14,16 @@ class ChatSettingService:
         """
         self.repository = ChatSettingRepository()
 
-    def create_chat_setting(self, user_id: str, settings_data: Dict[str, Any]) -> ChatSetting:
+    def upsert_chat_setting(self, user_id: str, settings_data: Dict[str, Any]) -> ChatSetting:
         """
-        建立新的 ChatSetting。
+        建立/更新 ChatSetting。
         :param user_id: 使用者 ID
         :param settings_data: 設定資料
-        :return: 新建立的 ChatSetting 物件
+        :return: ChatSetting 物件
         """
+        if self.repository.is_user_chat_setting_exists(user_id):
+            return self.repository.update_chat_setting(user_id, settings_data)
+
         return self.repository.create_chat_setting(user_id, settings_data)
 
     def get_chat_setting(self, user_id: str) -> ChatSetting:
@@ -30,12 +33,3 @@ class ChatSettingService:
         :return: ChatSetting 物件
         """
         return self.repository.get_chat_setting(user_id)
-
-    def update_chat_setting(self, user_id: str, settings_data: Dict[str, Any]) -> ChatSetting:
-        """
-        更新指定使用者的 ChatSetting。
-        :param user_id: 使用者 ID
-        :param settings_data: 設定資料
-        :return: 更新後的 ChatSetting 物件
-        """
-        return self.repository.update_chat_setting(user_id, settings_data)

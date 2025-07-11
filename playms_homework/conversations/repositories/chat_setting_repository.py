@@ -16,6 +16,7 @@ class ChatSettingRepository:
         :return: 新建立的 ChatSetting 物件
         """
         # pylint: disable=no-member
+
         chat_setting = ChatSetting.objects.create(
             user_id=user_id,
             **settings_data
