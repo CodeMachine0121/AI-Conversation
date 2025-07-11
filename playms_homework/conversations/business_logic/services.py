@@ -1,6 +1,5 @@
 from typing import List, Optional, Dict, Any
 
-from ..models.chat_setting import ChatSetting
 from ..repositories.chat_setting_repository import ChatSettingRepository
 from ..repositories.repositories import ConversationRepository
 from ..proxies.ai_proxy import AIProxy
@@ -89,7 +88,7 @@ class ConversationService:
         """
         return self.repository.add_message(conversation_id, Message.USER, content)
 
-    def generate_ai_response(self, user_id: str,  conversation_id: int, user_message: str, context: Dict[str, Any] = None) -> Optional[Message]:
+    def generate_ai_response(self, user_id: str,  conversation_id: int, user_message: str) -> Optional[Message]:
         """
         Generate an AI response to a user message and add it to the conversation.
 
@@ -106,11 +105,13 @@ class ConversationService:
         if not user_message_obj:
             return None
 
+
         # Generate AI response
         chat_setting_repository = ChatSettingRepository()
         ai_response = AIProxy.generate_response(
-            user_message= user_message,
-            user_chat_setting= chat_setting_repository.get_chat_setting(user_id))
+            user_chat_setting = chat_setting_repository.get_chat_setting(user_id),
+            conversation_messages = self.repository.get_conversation_messages(conversation_id=conversation_id)
+        )
 
         # Add AI response to the conversation
         return self.repository.add_message(conversation_id, Message.AI, ai_response)
