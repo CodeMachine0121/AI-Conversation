@@ -1,4 +1,3 @@
-
 // Utility to get CSRF token
 function getCookie(name) {
   let cookieValue = null;
@@ -45,6 +44,8 @@ async function loadConversations(conversationList, chatMessages) {
 
 // Fetch messages for a given conversation
 async function loadMessages(conversationId, chatMessages, messageInput, sendButton) {
+    console.log("load messages");
+    console.log(chatMessages)
   chatMessages.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
 
   // Highlight active conversation
@@ -138,79 +139,118 @@ async function handleMessageSubmit(e, messageInput, sendButton, activeConversati
 // Handle clicking on a conversation
 // Handle creating a new conversation
 document.addEventListener('DOMContentLoaded', () => {
+  // Add debugging to check if elements exist
+  console.log('DOM loaded, checking elements...');
+
   const conversationList = document.getElementById('conversation-list');
   const chatMessages = document.getElementById('chat-messages');
   const messageForm = document.getElementById('message-form');
   const messageInput = document.getElementById('message-input');
-  const sendButton = messageForm.querySelector('button');
+  const sendButton = messageForm ? messageForm.querySelector('button') : null;
   const newConversationBtn = document.getElementById('new-conversation-btn');
   const createChatSettingForm = document.getElementById('setting-form');
 
+  // Debug logging
+  console.log('conversationList:', conversationList);
+  console.log('chatMessages:', chatMessages);
+  console.log('messageForm:', messageForm);
+  console.log('messageInput:', messageInput);
+  console.log('sendButton:', sendButton);
+  console.log('newConversationBtn:', newConversationBtn);
+  console.log('createChatSettingForm:', createChatSettingForm);
+
+  // If chatMessages is still null, try waiting a bit longer
+  if (!chatMessages) {
+    console.error('chatMessages element not found! Retrying...');
+    setTimeout(() => {
+      const retryChateMessages = document.getElementById('chat-messages');
+      console.log('Retry chatMessages:', retryChateMessages);
+      if (retryChateMessages) {
+        // Re-initialize with found element
+        initializeChatApp(retryChateMessages, conversationList, messageForm, messageInput, sendButton, newConversationBtn, createChatSettingForm);
+      }
+    }, 100);
+    return;
+  }
+
+  initializeChatApp(chatMessages, conversationList, messageForm, messageInput, sendButton, newConversationBtn, createChatSettingForm);
+});
+
+function initializeChatApp(chatMessages, conversationList, messageForm, messageInput, sendButton, newConversationBtn, createChatSettingForm) {
   const activeConversation = { id: null };
   const csrftoken = getCookie('csrftoken');
 
-  messageForm.addEventListener('submit', (e) => handleMessageSubmit(e, messageInput, sendButton, activeConversation.id, csrftoken, chatMessages));
+  if (messageForm) {
+    messageForm.addEventListener('submit', (e) => handleMessageSubmit(e, messageInput, sendButton, activeConversation.id, csrftoken, chatMessages));
+  }
 
-  conversationList.addEventListener('click', async (e, chatMessages, messageInput, sendButton, activeConversation) => {
-      if (e.target && e.target.matches('.list-group-item-action')) {
-          e.preventDefault();
-          const conversationId = e.target.dataset.conversationId;
-          activeConversation.id = await loadMessages(conversationId, chatMessages, messageInput, sendButton);
-      }
-  });
+  if (conversationList) {
+    conversationList.addEventListener('click', async (e) => {
+        if (e.target && e.target.matches('.list-group-item-action')) {
+            e.preventDefault();
+            const conversationId = e.target.dataset.conversationId;
+            activeConversation.id = await loadMessages(conversationId, chatMessages, messageInput, sendButton);
+        }
+    });
+  }
 
-  newConversationBtn.addEventListener('click', async (csrftoken, conversationList, chatMessages, messageInput, sendButton, activeConversation) => {
+  if (newConversationBtn) {
+    newConversationBtn.addEventListener('click', async () => {
+        try {
+            const response = await fetch('/api/conversations/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+            });
+            if (!response.ok) {
+                throw new Error('Failed to create conversation');
+            }
+            const newConversation = await response.json();
+            await loadConversations(conversationList, chatMessages);
+            activeConversation.id = await loadMessages(newConversation.id, chatMessages, messageInput, sendButton);
+        } catch (error) {
+            alert('Could not create a new conversation.');
+        }
+    });
+  }
+
+  if (createChatSettingForm) {
+    createChatSettingForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      console.log("submit settings form");
       try {
-          const response = await fetch('/api/conversations/', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-                  'X-CSRFToken': csrftoken
-              },
-          });
-          if (!response.ok) {
-              throw new Error('Failed to create conversation');
-          }
-          const newConversation = await response.json();
-          await loadConversations(conversationList, chatMessages); // Refresh list
-          activeConversation.id = await loadMessages(newConversation.id, chatMessages, messageInput, sendButton); // Load the new empty conversation
+        const response = await fetch('/api/chat-setting/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+          },
+          body: JSON.stringify({
+              'reply_style': document.getElementById('ai-style').value,
+              'tone': document.getElementById('ai-tone').value,
+              'model': document.getElementById('ai-model').value,
+              'pre_constructed_prompt':  document.getElementById('pre-construction').value,
+              'api_key': document.getElementById('api-key').value,
+              'created_at': new Date().toISOString(),
+              'updated_at': new Date().toISOString(),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create chat settings');
+        }
+        const result = await response.json();
+        alert('Settings saved successfully!');
       } catch (error) {
-          alert('Could not create a new conversation.');
+        alert('Could not save settings: ' + error.message);
       }
-  });
-
-  createChatSettingForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    console.log("submit settings form");
-    try {
-      const response = await fetch('/api/chat-setting/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrftoken
-        },
-        body: JSON.stringify({
-            'reply_style': document.getElementById('reply-style').value,
-            'tone': document.getElementById('tone').value,
-            'model': document.getElementById('model').value,
-            'pre_constructed_prompt':  document.getElementById('pre-constructed-prompt').value,
-            'api_key': document.getElementById('api-key').value,
-            'created_at': new date().toISOString(),
-            'updated_at': new date().toISOString(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create chat settings');
-      }
-      const newConversation = await response.json();
-      await loadConversations(conversationList, chatMessages); // Refresh list
-      activeConversation.id = await loadMessages(newConversation.id, chatMessages, messageInput, sendButton); // Load the new empty conversation
-    } catch (error) {
-      alert('Could not create a new conversation.');
-    }
-  })
+    });
+  }
 
   // Initial load
-  loadConversations(conversationList, chatMessages);
-});
+  if (conversationList && chatMessages) {
+    loadConversations(conversationList, chatMessages);
+  }
+}
