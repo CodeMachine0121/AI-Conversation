@@ -4,6 +4,7 @@ from typing import Any, Dict
 from playms_homework.conversations.models.chat_setting import ChatSetting
 
 
+
 class ChatSettingRepository:
     """Repository for ChatSetting model."""
 
@@ -16,6 +17,7 @@ class ChatSettingRepository:
         :return: 新建立的 ChatSetting 物件
         """
         # pylint: disable=no-member
+
         chat_setting = ChatSetting.objects.create(
             user_id=user_id,
             **settings_data
@@ -46,3 +48,9 @@ class ChatSettingRepository:
         """
         # pylint: disable=no-member
         return ChatSetting.objects.get(user_id=user_id)
+
+    @staticmethod
+    def is_user_chat_setting_exists(user_id):
+        return ChatSetting.objects.filter(user_id=user_id).exists()
+
+

@@ -216,10 +216,11 @@ function initializeChatApp(chatMessages, conversationList, messageForm, messageI
     });
   }
 
-  if (createChatSettingForm) {
-    createChatSettingForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      console.log("submit settings form");
+  // Add event listener for Save Settings button in modal
+  const saveSettingsBtn = document.getElementById('save-settings-btn');
+  if (saveSettingsBtn) {
+    saveSettingsBtn.addEventListener('click', async () => {
+      console.log("save settings button clicked");
       try {
         const response = await fetch('/api/chat-setting/', {
           method: 'POST',
@@ -233,19 +234,31 @@ function initializeChatApp(chatMessages, conversationList, messageForm, messageI
               'model': document.getElementById('ai-model').value,
               'pre_constructed_prompt':  document.getElementById('pre-construction').value,
               'api_key': document.getElementById('api-key').value,
-              'created_at': new Date().toISOString(),
-              'updated_at': new Date().toISOString(),
           }),
         });
 
         if (!response.ok) {
-          throw new Error('Failed to create chat settings');
+          throw new Error('Failed to save chat settings');
         }
         const result = await response.json();
         alert('Settings saved successfully!');
+
+        // Close the modal after successful save
+        const settingsModal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
+        if (settingsModal) {
+          settingsModal.hide();
+        }
       } catch (error) {
         alert('Could not save settings: ' + error.message);
       }
+    });
+  }
+
+  // Keep the original form submit handler as backup (if needed)
+  if (createChatSettingForm) {
+    createChatSettingForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      // This will now be triggered by the Save Settings button click
     });
   }
 

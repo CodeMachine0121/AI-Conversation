@@ -1,4 +1,5 @@
 """ChatSettingViewSet 模組，提供 ChatSetting 的 API 介面。"""
+from typing import Dict, Any
 
 from rest_framework import viewsets, status
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
@@ -33,34 +34,16 @@ class ChatSettingViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK
         )
 
-    def perform_create(self, serializer):
+    def perform_create(self, request: Dict[str, Any] ):
         """
         建立目前使用者的 ChatSetting。
-        :param serializer: serializer 實例
-        :return: Response
         """
         user_id = self.request.user.id
-        chat_setting = self.service.create_chat_setting(user_id=user_id, settings_data=serializer.validated_data)
+        chat_setting = self.service.upsert_chat_setting(
+            user_id= user_id,
+            settings_data= request.initial_data)
+
         return Response(
             ChatSettingSerializer(chat_setting).data,
             status=status.HTTP_201_CREATED
-        )
-
-    def update_chat_settings(self, request):
-        """
-        更新目前使用者的 ChatSetting。
-        :param request: 請求物件
-        :return: Response
-        """
-        serializer = ChatSettingSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                serializer.errors,
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        user_id = request.user.id
-        chat_setting = self.service.update_chat_setting(user_id, serializer.validated_data)
-        return Response(
-            ChatSettingSerializer(chat_setting).data,
-            status=status.HTTP_200_OK
         )
