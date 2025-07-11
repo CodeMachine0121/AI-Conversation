@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Any
 
 from ..repositories.chat_setting_repository import ChatSettingRepository
 from ..repositories.repositories import ConversationRepository
-from ..proxies.ai_proxy import AIProxy
+from ..proxies.ai_proxy import OpenAiProxy
 from ..models import Conversation, Message
 
 
@@ -14,6 +14,7 @@ class ConversationService:
 
     def __init__(self):
         self.repository = ConversationRepository()
+        self.chat_setting_repository = ChatSettingRepository()
 
     def get_conversation(self, conversation_id: int) -> Optional[Conversation]:
         """
@@ -88,7 +89,7 @@ class ConversationService:
         """
         return self.repository.add_message(conversation_id, Message.USER, content)
 
-    def generate_ai_response(self, user_id: str,  conversation_id: int, user_message: str) -> Optional[Message]:
+    def generate_ai_response(self, user_id: int,  conversation_id: int, user_message: str) -> Optional[Message]:
         """
         Generate an AI response to a user message and add it to the conversation.
 
@@ -99,6 +100,9 @@ class ConversationService:
 
         Returns:
             The newly created AI message if the conversation exists, None otherwise.
+            :param user_message:
+            :param conversation_id:
+            :param user_id:
         """
         # First, add the user message to the conversation
         user_message_obj = self.add_user_message(conversation_id, user_message)
@@ -107,9 +111,9 @@ class ConversationService:
 
 
         # Generate AI response
-        chat_setting_repository = ChatSettingRepository()
-        ai_response = AIProxy.generate_response(
-            user_chat_setting = chat_setting_repository.get_chat_setting(user_id),
+        open_ai_proxy = OpenAiProxy()
+        ai_response = open_ai_proxy.generate_response(
+            user_chat_setting = self.chat_setting_repository.get_chat_setting(user_id),
             conversation_messages = self.repository.get_conversation_messages(conversation_id=conversation_id)
         )
 

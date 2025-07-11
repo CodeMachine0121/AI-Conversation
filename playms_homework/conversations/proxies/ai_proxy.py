@@ -1,12 +1,21 @@
+from abc import abstractmethod, ABC
+from typing import List
+
 from openai import OpenAI
 
+from playms_homework.conversations.models import Message
 from playms_homework.conversations.models.chat_setting import ChatSetting
 
 
-class AIProxy:
+class AiProxyInterface(ABC):
+    @abstractmethod
+    def generate_response(self, user_chat_setting: ChatSetting, conversation_messages: List[Message]) -> str:
+        pass
 
-    @staticmethod
-    def generate_response(user_chat_setting: ChatSetting, conversation_messages: []) -> str:
+
+class OpenAiProxy(AiProxyInterface):
+
+    def generate_response(self, user_chat_setting: ChatSetting, conversation_messages: List[Message]) -> str:
 
         client = OpenAI(api_key=user_chat_setting.api_key)
         pre_prompt = user_chat_setting.pre_constructed_prompt + "\n\n"  +  user_chat_setting.reply_style + "\n\n" +  user_chat_setting.tone
