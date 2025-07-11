@@ -12,6 +12,7 @@ class ChatSetting(models.Model):
     pre_constructed_prompt = models.TextField(blank=True, null=True, default=None)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    api_key = models.CharField(max_length=255, blank=True, null=True, default=None)
 
     class Meta:
         ordering = ['-updated_at']

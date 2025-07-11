@@ -1,25 +1,22 @@
 from typing import Dict, Any
+from openai import OpenAI
+
+from playms_homework.conversations.models.chat_setting import ChatSetting
 
 
 class AIProxy:
-    """
-    Proxy for AI service that always returns "Hello, World!".
-    This class provides an abstraction layer for interacting with AI services.
-    In a real-world scenario, this would make API calls to an AI service.
-    """
+    def __init__(self, user_id: str):
+        self.user_chat_setting = ChatSetting.objects.get(user_id=user_id)
+        api_key = self.user_chat_setting.api_key
+        self.client = OpenAI(api_key=api_key)
 
-    @staticmethod
-    def generate_response(user_message: str, context: Dict[str, Any] = None) -> str:
-        """
-        Generate a response to a user message.
+    def generate_response(self, user_message: str) -> str:
 
-        Args:
-            user_message: The message from the user.
-            context: Optional context information for the AI.
+        pre_prompt = self.user_chat_setting.pre_constructed_prompt + "\n\n"  +  self.user_chat_setting.reply_style + "\n\n" +  self.user_chat_setting.tone
 
-        Returns:
-            Always returns "Hello, World!" as specified in the requirements.
-        """
-        # In a real implementation, this would call an external AI API
-        # and pass the user_message and context
-        return "Hello, World!"
+        response = self.client.responses.create(
+            model= self.user_chat_setting.model,
+            instructions= pre_prompt,
+            input= user_message)
+
+        return response.output_text
