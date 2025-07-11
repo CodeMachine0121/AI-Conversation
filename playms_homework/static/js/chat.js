@@ -136,34 +136,7 @@ async function handleMessageSubmit(e, messageInput, sendButton, activeConversati
 }
 
 // Handle clicking on a conversation
-async function handleConversationClick(e, chatMessages, messageInput, sendButton, activeConversation) {
-  if (e.target && e.target.matches('.list-group-item-action')) {
-    e.preventDefault();
-    const conversationId = e.target.dataset.conversationId;
-    activeConversation.id = await loadMessages(conversationId, chatMessages, messageInput, sendButton);
-  }
-}
-
 // Handle creating a new conversation
-async function handleNewConversation(csrftoken, conversationList, chatMessages, messageInput, sendButton, activeConversation) {
-  try {
-      const response = await fetch('/api/conversations/', {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': csrftoken
-          },
-      });
-      if (!response.ok) throw new Error('Failed to create conversation');
-      const newConversation = await response.json();
-      await loadConversations(conversationList, chatMessages); // Refresh list
-      activeConversation.id = await loadMessages(newConversation.id, chatMessages, messageInput, sendButton); // Load the new empty conversation
-  } catch (error) {
-      alert('Could not create a new conversation.');
-  }
-}
-
-
 document.addEventListener('DOMContentLoaded', () => {
   const conversationList = document.getElementById('conversation-list');
   const chatMessages = document.getElementById('chat-messages');
@@ -177,8 +150,34 @@ document.addEventListener('DOMContentLoaded', () => {
   const csrftoken = getCookie('csrftoken');
 
   messageForm.addEventListener('submit', (e) => handleMessageSubmit(e, messageInput, sendButton, activeConversation.id, csrftoken, chatMessages));
-  conversationList.addEventListener('click', (e) => handleConversationClick(e, chatMessages, messageInput, sendButton, activeConversation));
-  newConversationBtn.addEventListener('click', () => handleNewConversation(csrftoken, conversationList, chatMessages, messageInput, sendButton, activeConversation));
+
+  conversationList.addEventListener('click', async (e, chatMessages, messageInput, sendButton, activeConversation) => {
+      if (e.target && e.target.matches('.list-group-item-action')) {
+          e.preventDefault();
+          const conversationId = e.target.dataset.conversationId;
+          activeConversation.id = await loadMessages(conversationId, chatMessages, messageInput, sendButton);
+      }
+  });
+
+  newConversationBtn.addEventListener('click', async (csrftoken, conversationList, chatMessages, messageInput, sendButton, activeConversation) => {
+      try {
+          const response = await fetch('/api/conversations/', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': csrftoken
+              },
+          });
+          if (!response.ok) {
+              throw new Error('Failed to create conversation');
+          }
+          const newConversation = await response.json();
+          await loadConversations(conversationList, chatMessages); // Refresh list
+          activeConversation.id = await loadMessages(newConversation.id, chatMessages, messageInput, sendButton); // Load the new empty conversation
+      } catch (error) {
+          alert('Could not create a new conversation.');
+      }
+  });
 
   createChatSettingForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -191,12 +190,13 @@ document.addEventListener('DOMContentLoaded', () => {
           'X-CSRFToken': csrftoken
         },
         body: JSON.stringify({
-          'reply_style': "test-reply-style",
-          'tone': "test-tone",
-          'model': "gpt-3.5-turbo",
-          'pre_constructed_prompt': "test pre-constructed prompt",
-          'created_at': "2023-10-01T00:00:00Z",
-          'updated_at': "2023-10-01T00:00:00Z"
+            'reply_style': document.getElementById('reply-style').value,
+            'tone': document.getElementById('tone').value,
+            'model': document.getElementById('model').value,
+            'pre_constructed_prompt':  document.getElementById('pre-constructed-prompt').value,
+            'api_key': document.getElementById('api-key').value,
+            'created_at': new date().toISOString(),
+            'updated_at': new date().toISOString(),
         }),
       });
 
@@ -209,7 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       alert('Could not create a new conversation.');
     }
-
   })
 
   // Initial load
