@@ -13,7 +13,6 @@ class ConversationService:
 
     def __init__(self):
         self.repository = ConversationRepository()
-        self.ai_proxy = AIProxy()
 
     def get_conversation(self, conversation_id: int) -> Optional[Conversation]:
         """
@@ -88,7 +87,7 @@ class ConversationService:
         """
         return self.repository.add_message(conversation_id, Message.USER, content)
 
-    def generate_ai_response(self, conversation_id: int, user_message: str, context: Dict[str, Any] = None) -> Optional[Message]:
+    def generate_ai_response(self, user_id: str,  conversation_id: int, user_message: str, context: Dict[str, Any] = None) -> Optional[Message]:
         """
         Generate an AI response to a user message and add it to the conversation.
 
@@ -106,7 +105,9 @@ class ConversationService:
             return None
 
         # Generate AI response
-        ai_response = self.ai_proxy.generate_response(user_message, context)
+
+        ai_proxy = AIProxy(user_id= user_id)
+        ai_response = ai_proxy.generate_response(user_message, context)
 
         # Add AI response to the conversation
         return self.repository.add_message(conversation_id, Message.AI, ai_response)

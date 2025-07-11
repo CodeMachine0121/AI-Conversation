@@ -87,7 +87,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
             )
 
         user_message = serializer.validated_data['message']
-        ai_message = self.service.generate_ai_response(pk, user_message)
+        ai_message = self.service.generate_ai_response(
+            user_id= self.request.user.id,
+            conversation_id= pk,
+            user_message= user_message)
 
         if not ai_message:
             return Response(
