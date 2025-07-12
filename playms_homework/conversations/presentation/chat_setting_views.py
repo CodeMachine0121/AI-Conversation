@@ -22,23 +22,31 @@ class ChatSettingViewSet(viewsets.ModelViewSet):
         super().__init__(**kwargs)
         self.service = ChatSettingService()
 
-    def get_chat_settings(self, request):
+    def list(self, request):
         """
         取得目前使用者的 ChatSetting。
-        :param request: 請求物件
-        :return: Response
+        對應 GET /api/chat-setting/ 請求
         """
-        chat_setting = self.service.get_chat_setting(request.user.id)
-        return Response(
-            ChatSettingSerializer(chat_setting).data,
-            status=status.HTTP_200_OK
-        )
+        try:
+            chat_setting = self.service.get_chat_setting(request.user.id)
+            data = ChatSettingSerializer(chat_setting).data
+            return Response(
+                data= data,
+                status=status.HTTP_200_OK
+            )
+        except Exception:
+            # 如果用戶還沒有設定，返回 404
+            return Response(
+                {"detail": "No settings found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-    def perform_create(self, request: Dict[str, Any] ):
+    def create(self, request):
         """
-        建立目前使用者的 ChatSetting。
+        建立或更新目前使用者的 ChatSetting。
+        對應 POST /api/chat-setting/ 請求
         """
-        user_id = self.request.user.id
+        user_id = request.user.id
         chat_setting = self.service.upsert_chat_setting(
             user_id= user_id,
             settings_data= request.initial_data)
