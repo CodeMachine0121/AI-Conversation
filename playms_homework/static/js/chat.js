@@ -254,6 +254,53 @@ function initializeChatApp(chatMessages, conversationList, messageForm, messageI
     });
   }
 
+  // Add event listener for Settings modal show event to load current settings
+  const settingsModal = document.getElementById('settingsModal');
+  if (settingsModal) {
+    settingsModal.addEventListener('show.bs.modal', async () => {
+      console.log("Settings modal opening, loading current settings...");
+      try {
+        const response = await fetch('/api/chat-setting/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+          }
+        });
+
+        if (response.ok) {
+          const settings = await response.json();
+          console.log("Loaded settings:", settings);
+
+          // Fill the form with current settings
+          if (settings.reply_style) {
+            document.getElementById('ai-style').value = settings.reply_style;
+          }
+          if (settings.tone) {
+            document.getElementById('ai-tone').value = settings.tone;
+          }
+          if (settings.model) {
+            document.getElementById('ai-model').value = settings.model;
+          }
+          if (settings.pre_constructed_prompt) {
+            document.getElementById('pre-construction').value = settings.pre_constructed_prompt;
+          }
+          if (settings.api_key) {
+            document.getElementById('api-key').value = settings.api_key;
+          }
+        } else if (response.status === 404) {
+          // User has no settings yet, keep default values
+          console.log("No existing settings found, using defaults");
+        } else {
+          throw new Error('Failed to load settings');
+        }
+      } catch (error) {
+        console.error('Could not load settings:', error.message);
+        // Keep default values if loading fails
+      }
+    });
+  }
+
   // Keep the original form submit handler as backup (if needed)
   if (createChatSettingForm) {
     createChatSettingForm.addEventListener('submit', async (e) => {
