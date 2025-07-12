@@ -34,7 +34,7 @@ class ChatSettingViewSet(viewsets.ModelViewSet):
                 data= data,
                 status=status.HTTP_200_OK
             )
-        except Exception:
+        except SettingsNotFoundError:
             # 如果用戶還沒有設定，返回 404
             return Response(
                 {"detail": "No settings found"},
