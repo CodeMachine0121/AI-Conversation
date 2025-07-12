@@ -149,6 +149,13 @@
                         </select>
                     </div>
                 </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <select id="userFilter" class="form-select">
+                            <option value="">所有用戶</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <div id="conversationsList">
@@ -235,6 +242,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
+            // 用戶篩選
+            const userFilter = document.getElementById('userFilter');
+            if (userFilter) {
+                userFilter.addEventListener('change', () => {
+                    this.filterConversations();
+                });
+            }
+
             // 模態框中的狀態切換按鈕
             const toggleStatusBtn = document.getElementById('toggleStatusBtn');
             if (toggleStatusBtn) {
@@ -246,10 +261,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         async loadConversations() {
             try {
-                const response = await fetch('/api/conversations/');
+                const response = await fetch('/api/admin/conversations/');
                 const data = await response.json();
                 this.conversations = data.results || data;
                 this.renderConversationsList();
+                this.loadUsersForFilter();
             } catch (error) {
                 console.error('載入對話列表失敗:', error);
                 this.showError('載入對話列表失敗');
@@ -258,13 +274,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
         async loadConversationMessages(conversationId) {
             try {
-                const response = await fetch(`/api/conversations/${conversationId}/messages/`);
+                const response = await fetch(`/api/admin/conversations/${conversationId}/messages/`);
                 const messages = await response.json();
                 this.currentMessages = messages;
                 this.renderConversationDetail(conversationId);
             } catch (error) {
                 console.error('載入對話訊息失敗:', error);
                 this.showError('載入對話訊息失敗');
+            }
+        }
+
+        async loadUsersForFilter() {
+            try {
+                const response = await fetch('/api/admin/users/');
+                const users = await response.json();
+
+                const userFilter = document.getElementById('userFilter');
+                if (userFilter) {
+                    userFilter.innerHTML = '<option value="">所有用戶</option>' + users.map(user => `
+                        <option value="${user.username}">${user.username}</option>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('載入用戶列表失敗:', error);
             }
         }
 
@@ -428,7 +460,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const action = conversation.status === 'active' ? 'close' : 'reopen';
 
             try {
-                const response = await fetch(`/api/conversations/${conversationId}/${action}/`, {
+                const response = await fetch(`/api/admin/conversations/${conversationId}/${action}/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -468,11 +500,13 @@ document.addEventListener('DOMContentLoaded', function() {
         filterConversations() {
             const searchInput = document.getElementById('searchInput');
             const statusFilter = document.getElementById('statusFilter');
+            const userFilter = document.getElementById('userFilter');
 
-            if (!searchInput || !statusFilter) return;
+            if (!searchInput || !statusFilter || !userFilter) return;
 
             const searchTerm = searchInput.value.toLowerCase();
             const statusFilterValue = statusFilter.value;
+            const userFilterValue = userFilter.value;
 
             let filtered = this.conversations.filter(conversation => {
                 const matchesSearch = !searchTerm ||
@@ -481,7 +515,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const matchesStatus = !statusFilterValue || conversation.status === statusFilterValue;
 
-                return matchesSearch && matchesStatus;
+                const matchesUser = !userFilterValue || (conversation.user_username === userFilterValue);
+
+                return matchesSearch && matchesStatus && matchesUser;
             });
 
             // 暫時更新顯示的對話列表
