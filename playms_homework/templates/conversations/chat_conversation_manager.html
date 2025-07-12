@@ -1,0 +1,557 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}對話管理 - {{ block.super }}{% endblock %}
+
+{% block css %}
+{{ block.super }}
+<style>
+.conversation-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    transition: box-shadow 0.3s ease;
+}
+
+.conversation-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.conversation-header {
+    background-color: #f8f9fa;
+    padding: 12px 16px;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 8px 8px 0 0;
+}
+
+.conversation-body {
+    padding: 16px;
+}
+
+.status-badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+}
+
+.message-preview {
+    background-color: #f8f9fa;
+    border-left: 3px solid #007bff;
+    padding: 8px 12px;
+    margin: 8px 0;
+    border-radius: 0 4px 4px 0;
+}
+
+.user-message {
+    border-left-color: #28a745;
+}
+
+.ai-message {
+    border-left-color: #17a2b8;
+}
+
+.sidebar {
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    min-height: calc(100vh - 120px);
+}
+
+.main-content {
+    background-color: white;
+    min-height: calc(100vh - 120px);
+}
+
+.message-detail {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.message-detail.user {
+    background-color: #e7f3ff;
+    border-left: 4px solid #007bff;
+}
+
+.message-detail.ai {
+    background-color: #f0f9ff;
+    border-left: 4px solid #17a2b8;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+.no-data {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+.filter-section {
+    background-color: white;
+    border-bottom: 1px solid #dee2e6;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.search-box {
+    position: relative;
+}
+
+.search-box i {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+}
+
+.search-box input {
+    padding-left: 35px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">對話管理</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 左側邊欄 - 對話列表 -->
+        <div class="col-md-4 sidebar">
+            <div class="filter-section">
+                <h5>篩選與搜索</h5>
+                <div class="mb-3">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" class="form-control" placeholder="搜索對話...">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-6">
+                        <select id="statusFilter" class="form-select">
+                            <option value="">所有狀態</option>
+                            <option value="active">進行中</option>
+                            <option value="closed">已結束</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <select id="sortOrder" class="form-select">
+                            <option value="-updated_at">最新更新</option>
+                            <option value="-created_at">建立時間</option>
+                            <option value="user__username">用戶名稱</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="conversationsList">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>載入對話列表中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右側主要內容區 -->
+        <div class="col-md-8 main-content">
+            <div id="conversationDetail">
+                <div class="no-data">
+                    <i class="fas fa-comments fa-3x mb-3"></i>
+                    <h4>請選擇一個對話來查看詳細內容</h4>
+                    <p class="text-muted">您可以從左側列表中選擇任一對話來查看完整的訊息記錄</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 對話詳細資訊模態框 -->
+<div class="modal fade" id="conversationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">對話資訊</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- 動態內容 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                <button type="button" id="toggleStatusBtn" class="btn btn-primary">變更狀態</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+{{ block.super }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    class ConversationManager {
+        constructor() {
+            this.conversations = [];
+            this.currentConversation = null;
+            this.currentMessages = [];
+            this.init();
+        }
+
+        init() {
+            this.loadConversations();
+            this.setupEventListeners();
+        }
+
+        setupEventListeners() {
+            // 搜索功能
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    this.filterConversations();
+                });
+            }
+
+            // 狀態篩選
+            const statusFilter = document.getElementById('statusFilter');
+            if (statusFilter) {
+                statusFilter.addEventListener('change', () => {
+                    this.filterConversations();
+                });
+            }
+
+            // 排序
+            const sortOrder = document.getElementById('sortOrder');
+            if (sortOrder) {
+                sortOrder.addEventListener('change', () => {
+                    this.sortConversations();
+                });
+            }
+
+            // 模態框中的狀態切換按鈕
+            const toggleStatusBtn = document.getElementById('toggleStatusBtn');
+            if (toggleStatusBtn) {
+                toggleStatusBtn.addEventListener('click', () => {
+                    this.toggleConversationStatus();
+                });
+            }
+        }
+
+        async loadConversations() {
+            try {
+                const response = await fetch('/api/conversations/');
+                const data = await response.json();
+                this.conversations = data.results || data;
+                this.renderConversationsList();
+            } catch (error) {
+                console.error('載入對話列表失敗:', error);
+                this.showError('載入對話列表失敗');
+            }
+        }
+
+        async loadConversationMessages(conversationId) {
+            try {
+                const response = await fetch(`/api/conversations/${conversationId}/messages/`);
+                const messages = await response.json();
+                this.currentMessages = messages;
+                this.renderConversationDetail(conversationId);
+            } catch (error) {
+                console.error('載入對話訊息失敗:', error);
+                this.showError('載入對話訊息失敗');
+            }
+        }
+
+        renderConversationsList() {
+            const container = document.getElementById('conversationsList');
+
+            if (this.conversations.length === 0) {
+                container.innerHTML = `
+                    <div class="no-data">
+                        <i class="fas fa-inbox fa-2x mb-3"></i>
+                        <h5>尚無對話記錄</h5>
+                        <p class="text-muted">還沒有任何對話記錄</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const conversationsHtml = this.conversations.map(conversation => {
+                const statusClass = conversation.status === 'active' ? 'success' : 'secondary';
+                const statusText = conversation.status === 'active' ? '進行中' : '已結束';
+
+                return `
+                    <div class="conversation-card" data-id="${conversation.id}" onclick="window.conversationManager.selectConversation(${conversation.id})">
+                        <div class="conversation-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">對話 #${conversation.id}</h6>
+                                <span class="badge bg-${statusClass} status-badge">${statusText}</span>
+                            </div>
+                            <small class="text-muted">用戶: ${conversation.user_username || 'Unknown'}</small>
+                        </div>
+                        <div class="conversation-body">
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">建立: ${new Date(conversation.created_at).toLocaleString()}</small>
+                                <small class="text-muted">更新: ${new Date(conversation.updated_at).toLocaleString()}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = conversationsHtml;
+        }
+
+        async selectConversation(conversationId) {
+            // 高亮選中的對話
+            document.querySelectorAll('.conversation-card').forEach(card => {
+                card.classList.remove('border-primary');
+            });
+            const selectedCard = document.querySelector(`[data-id="${conversationId}"]`);
+            if (selectedCard) {
+                selectedCard.classList.add('border-primary');
+            }
+
+            // 載入對話詳細資訊
+            this.currentConversation = this.conversations.find(c => c.id === conversationId);
+            await this.loadConversationMessages(conversationId);
+        }
+
+        renderConversationDetail(conversationId) {
+            const container = document.getElementById('conversationDetail');
+            const conversation = this.conversations.find(c => c.id === conversationId);
+
+            if (!conversation) {
+                container.innerHTML = '<div class="no-data">對話不存在</div>';
+                return;
+            }
+
+            const messagesHtml = this.currentMessages.map(message => {
+                const messageClass = message.sender === 'user' ? 'user' : 'ai';
+                const senderText = message.sender === 'user' ? '用戶' : 'AI';
+                const iconClass = message.sender === 'user' ? 'fa-user' : 'fa-robot';
+
+                return `
+                    <div class="message-detail ${messageClass}">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong><i class="fas ${iconClass} me-2"></i>${senderText}</strong>
+                            <small class="text-muted">${new Date(message.timestamp).toLocaleString()}</small>
+                        </div>
+                        <div class="message-content">${message.content}</div>
+                    </div>
+                `;
+            }).join('');
+
+            const statusClass = conversation.status === 'active' ? 'success' : 'secondary';
+            const statusText = conversation.status === 'active' ? '進行中' : '已結束';
+
+            container.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h4>對話 #${conversation.id}</h4>
+                        <div class="mb-2">
+                            <span class="badge bg-${statusClass} me-2">${statusText}</span>
+                            <span class="text-muted">用戶: ${conversation.user_username || 'Unknown'}</span>
+                        </div>
+                        <small class="text-muted">
+                            建立於: ${new Date(conversation.created_at).toLocaleString()} |
+                            最後更新: ${new Date(conversation.updated_at).toLocaleString()}
+                        </small>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-primary me-2" onclick="window.conversationManager.showConversationModal(${conversation.id})">
+                            <i class="fas fa-info-circle"></i> 詳細資訊
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="window.conversationManager.toggleStatus(${conversation.id})">
+                            <i class="fas fa-toggle-on"></i> 變更狀態
+                        </button>
+                    </div>
+                </div>
+
+                <div class="messages-container">
+                    <h5 class="mb-3">對話內容 (${this.currentMessages.length} 則訊息)</h5>
+                    ${messagesHtml || '<div class="no-data">此對話尚無訊息</div>'}
+                </div>
+            `;
+        }
+
+        showConversationModal(conversationId) {
+            const conversation = this.conversations.find(c => c.id === conversationId);
+            if (!conversation) return;
+
+            const modalBody = document.getElementById('modalBody');
+            const statusClass = conversation.status === 'active' ? 'success' : 'secondary';
+            const statusText = conversation.status === 'active' ? '進行中' : '已結束';
+
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>基本資訊</h6>
+                        <p><strong>對話ID:</strong> ${conversation.id}</p>
+                        <p><strong>用戶:</strong> ${conversation.user_username || 'Unknown'}</p>
+                        <p><strong>狀態:</strong> <span class="badge bg-${statusClass}">${statusText}</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>時間資訊</h6>
+                        <p><strong>建立時間:</strong> ${new Date(conversation.created_at).toLocaleString()}</p>
+                        <p><strong>最後更新:</strong> ${new Date(conversation.updated_at).toLocaleString()}</p>
+                        <p><strong>訊息數量:</strong> ${this.currentMessages.length}</p>
+                    </div>
+                </div>
+            `;
+
+            // 設定狀態切換按鈕
+            const toggleBtn = document.getElementById('toggleStatusBtn');
+            if (toggleBtn) {
+                toggleBtn.textContent = conversation.status === 'active' ? '結束對話' : '重新開啟';
+                toggleBtn.className = conversation.status === 'active' ? 'btn btn-warning' : 'btn btn-success';
+                toggleBtn.setAttribute('data-conversation-id', conversationId);
+            }
+
+            const modalElement = document.getElementById('conversationModal');
+            if (modalElement && window.bootstrap) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            }
+        }
+
+        async toggleStatus(conversationId) {
+            const conversation = this.conversations.find(c => c.id === conversationId);
+            if (!conversation) return;
+
+            const action = conversation.status === 'active' ? 'close' : 'reopen';
+
+            try {
+                const response = await fetch(`/api/conversations/${conversationId}/${action}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': this.getCSRFToken()
+                    }
+                });
+
+                if (response.ok) {
+                    await this.loadConversations();
+                    if (this.currentConversation && this.currentConversation.id === conversationId) {
+                        await this.selectConversation(conversationId);
+                    }
+                    this.showSuccess(`對話已${action === 'close' ? '結束' : '重新開啟'}`);
+                } else {
+                    throw new Error('操作失敗');
+                }
+            } catch (error) {
+                console.error('狀態切換失敗:', error);
+                this.showError('狀態切換失敗');
+            }
+        }
+
+        async toggleConversationStatus() {
+            const conversationId = document.getElementById('toggleStatusBtn')?.getAttribute('data-conversation-id');
+            if (conversationId) {
+                await this.toggleStatus(parseInt(conversationId));
+                const modalElement = document.getElementById('conversationModal');
+                if (modalElement && window.bootstrap) {
+                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                }
+            }
+        }
+
+        filterConversations() {
+            const searchInput = document.getElementById('searchInput');
+            const statusFilter = document.getElementById('statusFilter');
+
+            if (!searchInput || !statusFilter) return;
+
+            const searchTerm = searchInput.value.toLowerCase();
+            const statusFilterValue = statusFilter.value;
+
+            let filtered = this.conversations.filter(conversation => {
+                const matchesSearch = !searchTerm ||
+                    conversation.id.toString().includes(searchTerm) ||
+                    (conversation.user_username && conversation.user_username.toLowerCase().includes(searchTerm));
+
+                const matchesStatus = !statusFilterValue || conversation.status === statusFilterValue;
+
+                return matchesSearch && matchesStatus;
+            });
+
+            // 暫時更新顯示的對話列表
+            const originalConversations = this.conversations;
+            this.conversations = filtered;
+            this.renderConversationsList();
+            this.conversations = originalConversations;
+        }
+
+        sortConversations() {
+            const sortOrder = document.getElementById('sortOrder');
+            if (!sortOrder) return;
+
+            const sortValue = sortOrder.value;
+
+            this.conversations.sort((a, b) => {
+                switch (sortValue) {
+                    case '-updated_at':
+                        return new Date(b.updated_at) - new Date(a.updated_at);
+                    case '-created_at':
+                        return new Date(b.created_at) - new Date(a.created_at);
+                    case 'user__username':
+                        return (a.user_username || '').localeCompare(b.user_username || '');
+                    default:
+                        return 0;
+                }
+            });
+
+            this.renderConversationsList();
+        }
+
+        getCSRFToken() {
+            const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
+            return csrfElement ? csrfElement.value : '';
+        }
+
+        showSuccess(message) {
+            this.showToast(message, 'success');
+        }
+
+        showError(message) {
+            this.showToast(message, 'danger');
+        }
+
+        showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+            toast.style.zIndex = '9999';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            // 添加關閉按鈕
+            const closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'btn-close';
+            closeBtn.setAttribute('aria-label', 'Close');
+            closeBtn.onclick = () => toast.remove();
+            toast.appendChild(closeBtn);
+
+            // 自動移除
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 3000);
+        }
+    }
+
+    // 初始化管理器並設為全域變數
+    window.conversationManager = new ConversationManager();
+});
+</script>
+{% endblock %}

@@ -14,11 +14,12 @@ class MessageSerializer(serializers.ModelSerializer):
 
 class ConversationSerializer(serializers.ModelSerializer):
     messages = MessageSerializer(many=True, read_only=True)
+    user_username = serializers.CharField(source='user.username', read_only=True)
 
     class Meta:
         model = Conversation
-        fields = ['id', 'user', 'status', 'created_at', 'updated_at', 'messages']
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+        fields = ['id', 'user', 'user_username', 'status', 'created_at', 'updated_at', 'messages']
+        read_only_fields = ['id', 'user', 'user_username', 'created_at', 'updated_at']
 
 
 class UserMessageSerializer(serializers.Serializer):
