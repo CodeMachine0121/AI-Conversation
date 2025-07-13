@@ -1,4 +1,47 @@
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: playms_homework_postgres
+    environment:
+      POSTGRES_DB: playms_homework
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d playms_homework"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  web:
+    build:
+      context: .
+      dockerfile: ./compose/local/django/Dockerfile
+    container_name: playms_homework_web
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py shell -c \"
+             from django.contrib.auth import get_user_model;
+             User = get_user_model();
+             User.objects.get_or_create(username='user', defaults={'email': 'user@example.com', 'password': 'pbkdf2_sha256\$600000\$0000000000000\$0000000000000000000000000000000000000000000='});
+             User.objects.get_or_create(username='admin', defaults={'email': 'admin@example.com', 'is_staff': True, 'is_superuser': True, 'password': 'pbkdf2_sha256\$600000\$0000000000000\$0000000000000000000000000000000000000000000='});
+             print('Users created: user/userpass123, admin/adminpass123')\" &&
+             python manage.py runserver 0.0.0.0:8000"
+    env_file:
+      - ./.envs/.local/.django
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://myuser:mypassword@postgres:5432/playms_homework
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   docs:
     image: playms_homework_local_docs
     container_name: playms_homework_local_docs
@@ -14,3 +57,10 @@ services:
     ports:
       - '9000:9000'
     command: /start-docs
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: playms_homework_network
