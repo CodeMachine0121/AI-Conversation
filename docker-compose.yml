@@ -23,7 +23,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://myuser:mypassword@postgres:5432/playms_homework
     command: >
-      sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+      sh -c "python manage.py migrate && python utility/create_users.py && python manage.py runserver 0.0.0.0:8000"
 
 volumes:
   postgres_data:
