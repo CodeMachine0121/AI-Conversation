@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:15.0-alpine
+    container_name: playms_homework_postgres
+    environment:
+      POSTGRES_DB: playms_homework
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  web:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: playms_homework_web
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://myuser:mypassword@postgres:5432/playms_homework
+    command: >
+      sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: playms_homework_network
